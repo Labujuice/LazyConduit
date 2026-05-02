@@ -40,10 +40,10 @@ python3 LazyConduit.py \
 - [x] **Phase 1: Service Management**
     - [x] 撰寫 Ollama service start/stop 控制腳本
 - [ ] **Phase 2: CLI Core Development**
-    - [ ] 檔案類型偵測模組 (File Type Detector)
-    - [ ] 各格式轉換器 (PDF to Image, DOCX to Text, etc.)
-    - [ ] Prompt 語法解析器 (Markdown Link Parser)
-    - [ ] LLM API 呼叫整合 (Ollama/Gemini)
+    - [x] 檔案類型偵測模組 (File Type Detector)
+    - [x] 各格式轉換器 (PDF to Image, DOCX to Text, etc.)
+    - [x] Prompt 語法解析器 (Markdown Link Parser)
+    - [x] LLM API 呼叫整合 (Ollama/Gemini)
     - [ ] CLI 參數處理 (argparse) 與輸出儲存功能
 - [ ] **Phase 3: GUI Development**
     - [ ] Tkinter 基礎界面架構
