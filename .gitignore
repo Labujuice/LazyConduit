@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.venv/
+venv/
+ENV/
+
+# Project Specific
+assets/chicken.png
+test_notes.txt
+result.txt
+res.txt
