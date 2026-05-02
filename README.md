@@ -76,5 +76,9 @@ python3 LazyConduit.py --model "ollama/gemma4" "分析這張圖片 [小雞](./as
 - [ ] Phase 2 (In Progress): PDF/DOCX 進階轉換 / Advanced PDF/DOCX conversion.
 - [ ] Phase 3: GUI 界面開發 / GUI development.
 
+## 📄 授權條款 / License
+本專案採用 [MIT License](LICENSE) 授權。
+This project is licensed under the [MIT License](LICENSE).
+
 ---
 *LazyConduit - 讓資料與 LLM 之間的傳遞變得更懶、更直覺。*
