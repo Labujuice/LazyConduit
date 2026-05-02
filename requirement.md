@@ -1,34 +1,53 @@
 ## LazyConduit Requirement
 
 ### 1. Overview
-LazyConduit 是一個用 Python 寫的，可以在終端機直接執行的資料轉換工具, 主要是用轉換需要提供給 gemma 這種 LLM 所需的 prompt 資料，讓 gemma 更容易理解我們輸入的資料。 Gemma 可處理的資料包括 文字、圖片、聲音、影片等。
+LazyConduit 是一個用 Python 撰寫的資料轉換與 LLM 互動工具。其核心目標是讓使用者能透過簡易的 Markdown 語法 (Prompt) 快速引用各種多媒體檔案 (PDF, 圖片, 音訊, 影片等)，並自動將其轉換為 LLM (如 Ollama/Gemma, Gemini) 可理解的格式（通常為 Binary/Base64 或文字），最後直接呼叫 LLM 取得結果。
 
-很不幸的, 像是 PDF 這種資料, 直接交給 LLM 是沒有辦法的, 所以我们需要先將 PDF 這種資料轉換為文字或者二進制圖片。 同樣的 圖片聲音影音轉為二進制檔案讓 LLM 使用也是必要的。
+### 2. Development Roadmap
+開發將分為三個主要階段：
+1. **Infrastructure**: 建立 Ollama 服務的自動啟動/停止管理腳本。
+2. **CLI Core**: 實作核心 Python 程式，支援解析 Prompt 中的檔案連結、執行資料轉換、呼叫 LLM API，並能將輸出結果儲存至檔案。
+3. **GUI Wrapper**: 建立基於 Tkinter 的圖形界面，提供編輯器與預覽功能，並作為 CLI 的操作外殼 (Wrapper)。
 
-### 2. Features
-- python3 為主要實現的程式
-- Prompt 主要以 markdown 基礎語法支援, 像是引用檔案/圖片等. 位置可以採相對位置.
-- 支援 pdf、docx、txt、png、jpg、jpeg、mp3、mp4 等格式的轉換。
-- 支援將轉換後的資料輸出為單一文件。
-- 可設定轉換的品質，例如 pdf 轉換為圖片時，可以設定圖片的解析度等。 audio 轉為 binary 時，可以設定 audio 的頻率等。
-- 可設定輸出檔案的格式，例如 pdf 轉換為圖片時，可以設定圖片的格式為 png、jpg、jpeg 等。
-- 提供單一或者多個檔案的交叉插入, 讓 Prompt 可以針對多個檔案的邏輯進行處理。
-- 可以選擇 LLM 輸入的目標, 像是 ollama 的 gemma, 或者 google 的 gemini 等等。並且支援網路或者本機的 LLM。
-- 建立一個 tk based 的界面, 提供編輯, 與基礎預覽界面.
+### 3. Key Features
+- **自動檔案解析 (Auto-Parser)**：
+    - 在 Prompt 中使用 Markdown 語法引用檔案：`[檔案描述](相對/絕對路徑)`。
+    - 系統自動偵測檔案類型並決定轉換邏輯（例如：PDF 轉圖片、DOCX 轉文字）。
+- **支援格式**：
+    - 文件：PDF, DOCX, TXT
+    - 圖片：PNG, JPG, JPEG
+    - 影音：MP3, MP4
+- **LLM 整合**：
+    - 支援 **Ollama (本地)** 與 **Gemini (雲端)** API。
+    - 自動將轉換後的資料與文字 Prompt 封裝，發送給指定的模型。
+    - 直接在終端機印出結果，並支援 `--output` 參數儲存至檔案。
+- **轉換品質控制**：
+    - 內建各類型檔案的預設轉換品質（如 PDF 解析度、音訊頻率）。
+    - 支援透過 CLI Arguments (Option Input) 進行即時調整（例如：`--quality 300`）。
+- **多檔案交叉插入**：支援在單一 Prompt 中引用多個不同格式的檔案，讓模型進行綜合邏輯處理。
 
-TBD... 持續增加中
-
-### 3. Example
-
-**圖片分析**
-
+### 4. CLI Usage Example
 ```bash
-python3 LazyConduit.py --model ollama/gemma:2b "分析以下圖片內有幾隻雞 [檔案描述](./folder/file1.pdf), 請回應我 「總共有 X 隻雞。」"
+# 範例：分析 PDF 內容並將結果存檔
+python3 LazyConduit.py \
+  --model ollama/gemma:2b \
+  --output result.txt \
+  --quality 300 \
+  "分析以下圖片內有幾隻雞 [圖片描述](./assets/chicken.pdf)，請回應：總共有 X 隻雞。"
 ```
 
-### 4. TODO
-- [ ] ollama service start/stop script
-- [ ] 一般的 Prompt 輸入界面
-- [ ] 模型選擇界面切換
-- [ ] TBD....
+### 5. TODO List
+- [ ] **Phase 1: Service Management**
+    - [ ] 撰寫 Ollama service start/stop 控制腳本
+- [ ] **Phase 2: CLI Core Development**
+    - [ ] 檔案類型偵測模組 (File Type Detector)
+    - [ ] 各格式轉換器 (PDF to Image, DOCX to Text, etc.)
+    - [ ] Prompt 語法解析器 (Markdown Link Parser)
+    - [ ] LLM API 呼叫整合 (Ollama/Gemini)
+    - [ ] CLI 參數處理 (argparse) 與輸出儲存功能
+- [ ] **Phase 3: GUI Development**
+    - [ ] Tkinter 基礎界面架構
+    - [ ] Prompt 編輯區與檔案預覽區
+    - [ ] 模型選擇與參數設定界面
+    - [ ] GUI 呼叫 CLI 邏輯實作
 
