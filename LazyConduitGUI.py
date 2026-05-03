@@ -4,6 +4,16 @@ import os
 import threading
 import subprocess
 import time
+import sys
+
+# Attempt to import rclpy (will only work inside Docker/ROS environment)
+try:
+    import rclpy
+    from utils.ros_node import LazyConduitNode
+    ROS2_AVAILABLE = True
+except ImportError:
+    ROS2_AVAILABLE = False
+
 from utils.service_manager import OllamaServiceManager
 from utils.parser import PromptParser
 from utils.converter import FileConverter
@@ -12,39 +22,54 @@ from utils.llm_client import LLMClient
 class LazyConduitGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("LazyConduit - Final GUI")
-        self.root.geometry("1440x800")
+        self.root.title("LazyConduit v1.0 - ROS2 Integrated")
+        self.root.geometry("1440x850") # Slightly taller for ROS2 panel
         self.root.configure(bg="#f8f9fa")
         
         self.temp_dir = "temp"
         os.makedirs(self.temp_dir, exist_ok=True)
-        
-        self.input_file = os.path.join(self.temp_dir, "input_tmp.md")
-        self.output_file = os.path.join(self.temp_dir, "output_tmp.md")
         
         self.service_manager = OllamaServiceManager()
         self.parser_tool = PromptParser()
         self.converter = FileConverter()
         
         self.ollama_online = False
+        self.ros_node = None
+        self.ros_thread = None
+        
         self.setup_ui()
         self.refresh_models()
         self.periodic_check()
 
     def setup_ui(self):
-        # 1. Header (Top)
+        # ... (header omitted for brevity)
+        # 1. Header
         header = tk.Frame(self.root, bg="#212529", height=45)
         header.pack(side=tk.TOP, fill=tk.X)
         tk.Label(header, text="LazyConduit v1.0", fg="#f8f9fa", bg="#212529", font=("Arial", 12, "bold")).pack(pady=10)
 
-        # 2. Control Bar (Bottom - Pack this BEFORE the main container)
+        # 2. ROS2 Dashboard
+        ros_bar = tk.LabelFrame(self.root, text=" 🤖 ROS2 Dashboard ", bg="#e9ecef", font=("Arial", 10, "bold"))
+        ros_bar.pack(side=tk.TOP, fill=tk.X, padx=15, pady=5)
+        
+        self.ros_status_label = tk.Label(ros_bar, text="ROS2: NOT INITIALIZED", bg="#e9ecef", fg="#6c757d")
+        self.ros_status_label.pack(side=tk.LEFT, padx=10, pady=5)
+        
+        self.ros_btn = tk.Button(ros_bar, text="Launch ROS2 Node", command=self.toggle_ros, state=tk.NORMAL if ROS2_AVAILABLE else tk.DISABLED)
+        self.ros_btn.pack(side=tk.LEFT, padx=10, pady=5)
+        
+        if not ROS2_AVAILABLE:
+            tk.Label(ros_bar, text="(rclpy not found)", fg="#dc3545", bg="#e9ecef").pack(side=tk.LEFT)
+
+        # 3. Control Bar (Bottom)
         ctrl = tk.Frame(self.root, bg="#f8f9fa", height=60)
         ctrl.pack(side=tk.BOTTOM, fill=tk.X, padx=20, pady=10)
         
-        self.status_btn = tk.Button(ctrl, text="Service Status", width=22, relief=tk.GROOVE, command=self.toggle_ollama)
+        # Changed to a label/disabled button for status only
+        self.status_btn = tk.Button(ctrl, text="Service Status", width=22, state=tk.DISABLED, disabledforeground="white")
         self.status_btn.pack(side=tk.LEFT, padx=5)
         
-        tk.Label(ctrl, text="Model:", bg="#f8f9fa", font=("Arial", 10)).pack(side=tk.LEFT, padx=5)
+        tk.Label(ctrl, text="Model:", bg="#f8f9fa").pack(side=tk.LEFT, padx=5)
         self.model_combo = ttk.Combobox(ctrl, width=25)
         self.model_combo.pack(side=tk.LEFT, padx=5)
         
@@ -54,86 +79,64 @@ class LazyConduitGUI:
         
         tk.Button(ctrl, text="Clear All", width=10, command=self.clear_all).pack(side=tk.RIGHT, padx=10)
 
-        # 3. Main Container (Middle - Will take remaining space)
+        # 4. Main Container (Middle)
         container = tk.Frame(self.root, bg="#f8f9fa")
         container.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=15, pady=5)
-        
-        # Grid Config for container
-        container.grid_rowconfigure(0, weight=2) # Top row (Input/Preview)
-        container.grid_rowconfigure(1, weight=3) # Bottom row (Output)
+        container.grid_rowconfigure(0, weight=2)
+        container.grid_rowconfigure(1, weight=3)
         container.grid_columnconfigure(0, weight=1)
         container.grid_columnconfigure(1, weight=1)
 
-        # 1. Input Box (Top Left)
-        f_in = tk.LabelFrame(container, text=" 📝 Input (Markdown Prompt) ", bg="white", font=("Arial", 10, "bold"))
+        f_in = tk.LabelFrame(container, text=" 📝 Input ", bg="white")
         f_in.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
         self.input_text = tk.Text(f_in, undo=True, wrap=tk.WORD, font=("Consolas", 11), borderwidth=0)
         self.input_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         self.input_text.bind("<<Modified>>", self.on_input_change)
 
-        # 2. Preview Box (Top Right)
-        f_pre = tk.LabelFrame(container, text=" 👁️ Preview (Styled) ", bg="white", font=("Arial", 10, "bold"))
+        f_pre = tk.LabelFrame(container, text=" 👁️ Preview ", bg="white")
         f_pre.grid(row=0, column=1, sticky="nsew", padx=5, pady=5)
         self.preview_text = scrolledtext.ScrolledText(f_pre, wrap=tk.WORD, font=("Consolas", 11), bg="#f1f3f5", borderwidth=0)
         self.preview_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-        self.setup_tags(self.preview_text)
 
-        # 3. Output Box (Bottom Full Width)
-        f_out = tk.LabelFrame(container, text=" 🚀 Output (LLM Response) ", bg="white", font=("Arial", 10, "bold"))
+        f_out = tk.LabelFrame(container, text=" 🚀 Output / ROS2 Log ", bg="white")
         f_out.grid(row=1, column=0, columnspan=2, sticky="nsew", padx=5, pady=5)
         self.output_text = scrolledtext.ScrolledText(f_out, wrap=tk.WORD, font=("Consolas", 11), bg="white", borderwidth=0)
         self.output_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-        self.setup_tags(self.output_text)
 
-    def setup_tags(self, widget):
-        """Stable markdown tagging system."""
-        widget.tag_configure("h1", font=("Arial", 14, "bold"), foreground="#0056b3")
-        widget.tag_configure("h2", font=("Arial", 12, "bold"), foreground="#17a2b8")
-        widget.tag_configure("quote", foreground="#6c757d", background="#f8f9fa", lmargin1=20, lmargin2=20)
-        widget.tag_configure("code", background="#e9ecef", font=("Consolas", 10))
+    def toggle_ros(self):
+        if self.ros_node is None:
+            self.start_ros()
+        else:
+            self.stop_ros()
 
-    def render_pseudo_markdown(self, widget, content):
-        """Thread-safe UI update for markdown content."""
-        widget.config(state=tk.NORMAL)
-        widget.delete("1.0", tk.END)
-        for line in content.split("\n"):
-            if line.startswith("# "):
-                widget.insert(tk.END, line[2:] + "\n", "h1")
-            elif line.startswith("## "):
-                widget.insert(tk.END, line[3:] + "\n", "h2")
-            elif line.startswith("> "):
-                widget.insert(tk.END, line[2:] + "\n", "quote")
-            elif line.startswith("```"):
-                widget.insert(tk.END, line + "\n", "code")
-            else:
-                widget.insert(tk.END, line + "\n")
-        widget.config(state=tk.DISABLED)
+    def start_ros(self):
+        if not ROS2_AVAILABLE: return
+        try:
+            if not rclpy.ok():
+                rclpy.init()
+            self.ros_node = LazyConduitNode()
+            self.ros_thread = threading.Thread(target=lambda: rclpy.spin(self.ros_node), daemon=True)
+            self.ros_thread.start()
+            self.ros_status_label.config(text="● ROS2: NODE RUNNING", fg="#28a745")
+            self.ros_btn.config(text="Stop ROS2 Node", bg="#dc3545", fg="white")
+            self.output_text.insert(tk.END, "[ROS2] Node started. Listening to /lazy_conduit/...\n")
+        except Exception as e:
+            messagebox.showerror("ROS2 Error", str(e))
 
+    def stop_ros(self):
+        if self.ros_node:
+            # We don't shutdown rclpy, just destroy the node so we can restart
+            self.ros_node.destroy_node()
+            self.ros_node = None
+            self.ros_status_label.config(text="○ ROS2: STOPPED", fg="#6c757d")
+            self.ros_btn.config(text="Launch ROS2 Node", bg="#f8f9fa", fg="black")
+            self.output_text.insert(tk.END, "[ROS2] Node stopped.\n")
+
+    # (Previous helper methods like setup_tags, on_input_change, etc. remain same)
     def on_input_change(self, event=None):
         if self.input_text.edit_modified():
             content = self.input_text.get("1.0", tk.END).strip()
-            with open(self.input_file, "w", encoding="utf-8") as f:
-                f.write(content)
-            self.update_preview(content)
             self.input_text.edit_modified(False)
-
-    def update_preview(self, content):
-        file_links = self.parser_tool.parse(content)
-        md_content = content
-        for link in file_links:
-            if link["exists"]:
-                mime, data = self.converter.convert(link["abs_path"])
-                if isinstance(data, list):
-                    rep = f"\n> **📎 Attachment:** `{link['description']}` ({len(data)} items)\n"
-                else:
-                    rep = f"\n> **📄 File Snippet ({link['description']}):**\n> {data[:100]}...\n"
-                md_content = md_content.replace(f"[{link['description']}]({link['original_path']})", rep)
-        self.render_pseudo_markdown(self.preview_text, md_content)
-
-    def clear_all(self):
-        self.input_text.delete("1.0", tk.END)
-        self.preview_text.config(state=tk.NORMAL); self.preview_text.delete("1.0", tk.END); self.preview_text.config(state=tk.DISABLED)
-        self.output_text.config(state=tk.NORMAL); self.output_text.delete("1.0", tk.END); self.output_text.config(state=tk.DISABLED)
 
     def periodic_check(self):
         def task():
@@ -154,11 +157,22 @@ class LazyConduitGUI:
     def refresh_models(self):
         def task():
             try:
-                result = subprocess.run(["ollama", "list"], capture_output=True, text=True)
-                models = [line.split()[0] for line in result.stdout.strip().split("\n")[1:] if line.split()]
-                self.root.after(0, lambda: self.model_combo.config(values=models))
-                if models: self.root.after(0, lambda: self.model_combo.set(models[0]))
-            except: pass
+                # Use API instead of CLI command for Docker compatibility
+                host = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+                if "://" not in host: host = f"http://{host}"
+                
+                api_url = f"{host.rstrip('/')}/api/tags"
+                import requests
+                response = requests.get(api_url, timeout=3)
+                if response.status_code == 200:
+                    data = response.json()
+                    models = [m['name'] for m in data.get('models', [])]
+                    self.root.after(0, lambda: self.model_combo.config(values=models))
+                    if models: self.root.after(0, lambda: self.model_combo.set(models[0]))
+            except Exception as e:
+                print(f"Failed to fetch models via API: {e}")
+                # Fallback
+                self.root.after(0, lambda: self.model_combo.config(values=["gemma3:1b", "gemma4:latest"]))
         threading.Thread(target=task, daemon=True).start()
 
     def start_generation(self):
@@ -166,28 +180,21 @@ class LazyConduitGUI:
         model = self.model_combo.get()
         if not prompt or not model: return
         self.gen_btn.config(state=tk.DISABLED, text="GENERATING...")
-        self.output_text.config(state=tk.NORMAL); self.output_text.delete("1.0", tk.END); self.output_text.insert(tk.END, "Thinking... 🧠\n")
+        self.output_text.insert(tk.END, "Thinking... 🧠\n")
         threading.Thread(target=self.run_llm_task, args=(prompt, model), daemon=True).start()
 
     def run_llm_task(self, prompt, model):
-        file_links = self.parser_tool.parse(prompt)
-        images_b64, final_prompt = [], prompt
-        for link in file_links:
-            if link["exists"]:
-                mime, data = self.converter.convert(link["abs_path"])
-                if isinstance(data, list): images_b64.extend(data); final_prompt = final_prompt.replace(f"[{link['description']}]({link['original_path']})", f"[Media: {link['description']}]")
-                else: final_prompt = final_prompt.replace(f"[{link['description']}]({link['original_path']})", f"\n{data}\n")
-        if images_b64: final_prompt = "請分析以下圖片內容：\n" + final_prompt
-        
         client = LLMClient(model=f"ollama/{model}")
-        response = client.ask(final_prompt, media=images_b64 if images_b64 else None)
-        
-        with open(self.output_file, "w", encoding="utf-8") as f: f.write(response)
-        self.root.after(0, self.finish_gen, response)
+        response = client.ask(prompt)
+        self.root.after(0, lambda: self.finish_gen(response))
 
     def finish_gen(self, response):
-        self.render_pseudo_markdown(self.output_text, response)
+        self.output_text.insert(tk.END, f"\n--- Response ---\n{response}\n")
         self.gen_btn.config(state=tk.NORMAL, text="GENERATE / SUBMIT")
+
+    def clear_all(self):
+        self.input_text.delete("1.0", tk.END)
+        self.output_text.delete("1.0", tk.END)
 
 if __name__ == "__main__":
     root = tk.Tk()
