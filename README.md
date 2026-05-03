@@ -73,8 +73,8 @@ python3 LazyConduit.py --model "ollama/gemma4" "分析這張圖片 [小雞](./as
 ## 📅 開發進度 / Roadmap
 - [x] Phase 1: Ollama 服務管理自動化 / Ollama service automation.
 - [x] Phase 2: CLI 核心功能、Markdown 解析、文字/圖片注入 / CLI core, Markdown parsing, Text/Image injection.
-- [ ] Phase 2 (In Progress): PDF/DOCX 進階轉換 / Advanced PDF/DOCX conversion.
 - [ ] Phase 3: GUI 界面開發 / GUI development.
+- [ ] Phase 4: ROS2 rostopic 支援 / ROS2 rostopic support.
 
 ## 📄 授權條款 / License
 本專案採用 [MIT License](LICENSE) 授權。
