@@ -32,12 +32,13 @@ LazyConduit is a Python-based data conversion and LLM interaction tool. It autom
 
 2. **安裝依賴套件 / Install Dependencies**:
    ```bash
-   pip install requests
+   pip install requests pymupdf python-docx odfpy
    ```
 
 3. **模型準備 / Pull Models**:
    ```bash
    ollama pull gemma4:latest
+   ollama pull gemma4:e2b
    ollama pull gemma3:1b
    ```
 
@@ -62,6 +63,20 @@ python3 LazyConduit.py "請幫我總結這份筆記： [我的筆記](./notes.tx
 python3 LazyConduit.py --model "ollama/gemma4" "分析這張圖片 [小雞](./assets/chicken.png)"
 ```
 
+**PDF 分析範例 (PDF Analysis Example):**
+```bash
+python3 LazyConduit.py --model "ollama/gemma4" --pages "1" "請總結這份文件的第一頁內容： [文件](./assets/3 Body Problem.pdf)"
+```
+
+**PDF 多頁分析範例 (PDF Multi-Page Analysis Example):**
+```bash
+python3 LazyConduit.py --model "ollama/gemma4" --pages "1,2,3" "請總結這份文件的第一、二、三頁內容： [文件](./assets/3 Body Problem.pdf)"
+```
+
+**docx 轉換範例 (DOCX Conversion Example):**
+```bash
+python3 LazyConduit.py --model "ollama/gemma4" "請總結這份文件的內容： [文件](./assets/3 body problem.docx)"
+```
 ---
 
 ## 📂 專案結構 / Project Structure

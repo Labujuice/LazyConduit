@@ -13,8 +13,14 @@ try:
 except ImportError:
     Document = None
 
+try:
+    from odf import text, teletype
+    from odf.opendocument import load
+except ImportError:
+    load = None
+
 class FileConverter:
-    def __init__(self, quality=150):
+    def __init__(self, quality=100):
         self.quality = quality
 
     def detect_type(self, file_path):
@@ -27,6 +33,7 @@ class FileConverter:
         mapping = {
             ".pdf": "application/pdf",
             ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ".odt": "application/vnd.oasis.opendocument.text",
             ".txt": "text/plain",
             ".png": "image/png",
             ".jpg": "image/jpeg",
@@ -91,12 +98,27 @@ class FileConverter:
         except Exception as e:
             return f"Error converting DOCX: {str(e)}"
 
+    def convert_odt_to_text(self, file_path):
+        """Extracts text from an ODT file."""
+        if not load:
+            return "Error: odfpy not installed. Please run 'pip install odfpy'."
+        
+        try:
+            textdoc = load(file_path)
+            all_text = []
+            paragraphs = textdoc.getElementsByType(text.P)
+            for p in paragraphs:
+                all_text.append(teletype.extractText(p))
+            return "\n".join(all_text)
+        except Exception as e:
+            return f"Error converting ODT: {str(e)}"
+
     def convert(self, file_path, pages="all"):
         """
         Main conversion logic.
         """
         if not os.path.exists(file_path):
-            return None, f"File not found: {file_path}"
+            return None, f"Error: File not found: {file_path}"
 
         mime_type = self.detect_type(file_path)
         
@@ -112,17 +134,22 @@ class FileConverter:
             data = self.convert_docx_to_text(file_path)
             return "text/plain", data
 
-        # 3. Handle Text
+        # 3. Handle ODT
+        if mime_type == "application/vnd.oasis.opendocument.text" or file_path.endswith(".odt"):
+            data = self.convert_odt_to_text(file_path)
+            return "text/plain", data
+
+        # 4. Handle Text
         if mime_type == "text/plain":
             with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                 return mime_type, f.read()
         
-        # 4. Handle Images (Return as list for consistency)
+        # 5. Handle Images (Return as list for consistency)
         if mime_type.startswith("image/"):
             return mime_type, [self.to_base64(file_path)]
         
-        # Default: Return as single base64 in a list
-        return mime_type, [self.to_base64(file_path)]
+        # Default: Don't treat as image if it's not recognized
+        return "text/plain", f"Error: Unsupported file format '{mime_type}' for {file_path}"
 
 if __name__ == "__main__":
     converter = FileConverter()
