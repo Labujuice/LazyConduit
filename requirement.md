@@ -45,11 +45,11 @@ python3 LazyConduit.py \
     - [x] Prompt 語法解析器 (Markdown Link Parser)
     - [x] LLM API 呼叫整合 (Ollama/Gemini)
     - [x] CLI 參數處理 (argparse) 與輸出儲存功能
-- [ ] **Phase 3: GUI Development**
-    - [ ] Tkinter 基礎界面架構
-    - [ ] Prompt 編輯區與檔案預覽區
-    - [ ] 模型選擇與參數設定界面
-    - [ ] GUI 呼叫 CLI 邏輯實作
+- [x] **Phase 3: GUI Development**
+    - [x] Tkinter 基礎界面架構
+    - [x] Prompt 編輯區與檔案預覽區
+    - [x] 模型選擇與參數設定界面
+    - [x] GUI 呼叫 CLI 邏輯實作
 - [ ] **Phase 4: ros2 rostopic support**
     - [ ] 制定 ros2 rostopic 的資料格式與傳輸協定
     - [ ] 實作 ros2 rostopic 的訊息封裝與解封裝
