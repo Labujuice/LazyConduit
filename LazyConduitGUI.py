@@ -32,16 +32,33 @@ class LazyConduitGUI:
         self.periodic_check()
 
     def setup_ui(self):
-        # Header
+        # 1. Header (Top)
         header = tk.Frame(self.root, bg="#212529", height=45)
-        header.pack(fill=tk.X)
+        header.pack(side=tk.TOP, fill=tk.X)
         tk.Label(header, text="LazyConduit v1.0", fg="#f8f9fa", bg="#212529", font=("Arial", 12, "bold")).pack(pady=10)
 
-        # Main Container
-        container = tk.Frame(self.root, bg="#f8f9fa")
-        container.pack(fill=tk.BOTH, expand=True, padx=15, pady=5)
+        # 2. Control Bar (Bottom - Pack this BEFORE the main container)
+        ctrl = tk.Frame(self.root, bg="#f8f9fa", height=60)
+        ctrl.pack(side=tk.BOTTOM, fill=tk.X, padx=20, pady=10)
         
-        # Grid Config
+        self.status_btn = tk.Button(ctrl, text="Service Status", width=22, relief=tk.GROOVE, command=self.toggle_ollama)
+        self.status_btn.pack(side=tk.LEFT, padx=5)
+        
+        tk.Label(ctrl, text="Model:", bg="#f8f9fa", font=("Arial", 10)).pack(side=tk.LEFT, padx=5)
+        self.model_combo = ttk.Combobox(ctrl, width=25)
+        self.model_combo.pack(side=tk.LEFT, padx=5)
+        
+        self.gen_btn = tk.Button(ctrl, text="GENERATE / SUBMIT", bg="#28a745", fg="white", width=25, 
+                                  font=("Arial", 10, "bold"), command=self.start_generation)
+        self.gen_btn.pack(side=tk.RIGHT, padx=5)
+        
+        tk.Button(ctrl, text="Clear All", width=10, command=self.clear_all).pack(side=tk.RIGHT, padx=10)
+
+        # 3. Main Container (Middle - Will take remaining space)
+        container = tk.Frame(self.root, bg="#f8f9fa")
+        container.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=15, pady=5)
+        
+        # Grid Config for container
         container.grid_rowconfigure(0, weight=2) # Top row (Input/Preview)
         container.grid_rowconfigure(1, weight=3) # Bottom row (Output)
         container.grid_columnconfigure(0, weight=1)
@@ -67,23 +84,6 @@ class LazyConduitGUI:
         self.output_text = scrolledtext.ScrolledText(f_out, wrap=tk.WORD, font=("Consolas", 11), bg="white", borderwidth=0)
         self.output_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         self.setup_tags(self.output_text)
-
-        # 4. Control Bar
-        ctrl = tk.Frame(self.root, bg="#f8f9fa", height=60)
-        ctrl.pack(fill=tk.X, padx=20, pady=10)
-        
-        self.status_btn = tk.Button(ctrl, text="Service Status", width=22, relief=tk.GROOVE, command=self.toggle_ollama)
-        self.status_btn.pack(side=tk.LEFT, padx=5)
-        
-        tk.Label(ctrl, text="Model:", bg="#f8f9fa", font=("Arial", 10)).pack(side=tk.LEFT, padx=5)
-        self.model_combo = ttk.Combobox(ctrl, width=25)
-        self.model_combo.pack(side=tk.LEFT, padx=5)
-        
-        self.gen_btn = tk.Button(ctrl, text="GENERATE / SUBMIT", bg="#28a745", fg="white", width=25, 
-                                  font=("Arial", 10, "bold"), command=self.start_generation)
-        self.gen_btn.pack(side=tk.RIGHT, padx=5)
-        
-        tk.Button(ctrl, text="Clear All", width=10, command=self.clear_all).pack(side=tk.RIGHT, padx=10)
 
     def setup_tags(self, widget):
         """Stable markdown tagging system."""
