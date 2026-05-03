@@ -32,18 +32,20 @@ LazyConduit is a Python-based data conversion and LLM interaction tool. It autom
 
 2. **安裝依賴套件 / Install Dependencies**:
    ```bash
-   pip install requests
+   pip install requests pymupdf python-docx odfpy
    ```
 
 3. **模型準備 / Pull Models**:
    ```bash
    ollama pull gemma4:latest
+   ollama pull gemma4:e2b
    ollama pull gemma3:1b
    ```
 
 ---
 
 ## 🚀 使用說明 / Usage
+## 🚀 使用方式 / Usage
 
 ### 1. 啟動服務 / Start Service
 ```bash
@@ -52,9 +54,23 @@ bash scripts/ollama_manager.sh start
 
 ### 2. 執行指令 / Run Commands
 
+### 圖形界面模式 (GUI Mode)
+如果你偏好使用視窗界面，可以使用以下指令啟動：
+```bash
+python3 LazyConduitGUI.py
+```
+**功能特色 / Features:**
+- **三欄式佈局**：同時具備 Prompt 輸入、即時預覽 (Markdown 著色)、以及 LLM 回應區域。
+- **自動儲存**：輸入內容會即時存檔至 `temp/input_tmp.md`，輸出結果存至 `temp/output_tmp.md`。
+- **服務管理**：內建 Ollama 服務狀態切換按鈕，無需切換至終端機。
+- **模型管理**：自動列出已安裝模型，並支援手動輸入下載。
+
+---
+
+### 終端機模式 (CLI Mode)
 **文字總結範例 (Text Summary Example):**
 ```bash
-python3 LazyConduit.py "請幫我總結這份筆記： [我的筆記](./notes.txt)"
+python3 LazyConduit.py "請幫我總結這份筆記： [我的筆記](./assets/notes.txt)"
 ```
 
 **圖片分析範例 (Image Analysis Example):**
@@ -62,19 +78,35 @@ python3 LazyConduit.py "請幫我總結這份筆記： [我的筆記](./notes.tx
 python3 LazyConduit.py --model "ollama/gemma4" "分析這張圖片 [小雞](./assets/chicken.png)"
 ```
 
+**PDF 分析範例 (PDF Analysis Example):**
+```bash
+python3 LazyConduit.py --model "ollama/gemma4" --pages "1" "請總結這份文件的第一頁內容： [文件](./assets/3 Body Problem.pdf)"
+```
+
+**PDF 多頁分析範例 (PDF Multi-Page Analysis Example):**
+```bash
+python3 LazyConduit.py --model "ollama/gemma4" --pages "1,2,3" "請總結這份文件的第一、二、三頁內容： [文件](./assets/3 Body Problem.pdf)"
+```
+
+**docx/odt 轉換範例 (Document Conversion Example):**
+```bash
+# 支援 .docx 與 .odt
+python3 LazyConduit.py --model "ollama/gemma4" "請總結這份文件的內容： [文件](./assets/3 body problem.docx)"
+```
 ---
 
 ## 📂 專案結構 / Project Structure
-- `LazyConduit.py`: 主程式進入點 / Main entry point.
+- `LazyConduit.py`: CLI 主程式 / CLI entry point.
+- `LazyConduitGUI.py`: GUI 主程式 / GUI entry point.
 - `scripts/`: 服務管理腳本 / Service management scripts.
 - `utils/`: 核心模組 (解析器、轉換器、LLM 客戶端) / Core modules.
-- `assets/`: 測試用媒體檔案 / Test media files.
+- `temp/`: GUI 暫存目錄 / GUI temporary files.
 
 ## 📅 開發進度 / Roadmap
 - [x] Phase 1: Ollama 服務管理自動化 / Ollama service automation.
 - [x] Phase 2: CLI 核心功能、Markdown 解析、文字/圖片注入 / CLI core, Markdown parsing, Text/Image injection.
-- [ ] Phase 2 (In Progress): PDF/DOCX 進階轉換 / Advanced PDF/DOCX conversion.
-- [ ] Phase 3: GUI 界面開發 / GUI development.
+- [x] Phase 3: GUI 界面開發 / GUI development.
+- [ ] Phase 4: ROS2 rostopic 支援 / ROS2 rostopic support.
 
 ## 📄 授權條款 / License
 本專案採用 [MIT License](LICENSE) 授權。
