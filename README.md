@@ -55,7 +55,7 @@ bash scripts/ollama_manager.sh start
 
 **文字總結範例 (Text Summary Example):**
 ```bash
-python3 LazyConduit.py "請幫我總結這份筆記： [我的筆記](./notes.txt)"
+python3 LazyConduit.py "請幫我總結這份筆記： [我的筆記](./assets/notes.txt)"
 ```
 
 **圖片分析範例 (Image Analysis Example):**
