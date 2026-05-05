@@ -1,10 +1,19 @@
 import requests
 import json
+import os
 
 class LLMClient:
-    def __init__(self, model="ollama/gemma3:1b"):
+    def __init__(self, model="ollama/gemma3:1b", api_url=None):
         self.model = model
-        self.ollama_url = "http://localhost:11434/api/generate"
+        # Priority: constructor arg > env var > default
+        env_host = os.getenv("OLLAMA_HOST", "http://localhost:11434").rstrip('/')
+        base_url = api_url if api_url else env_host
+        if "/api/generate" not in base_url:
+            self.ollama_url = f"{base_url}/api/generate"
+        else:
+            self.ollama_url = base_url
+        
+        self.gemini_key = os.getenv("GEMINI_API_KEY")
 
     def call_ollama(self, prompt, images=None):
         """Calls local Ollama API."""

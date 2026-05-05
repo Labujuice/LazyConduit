@@ -1,116 +1,89 @@
 # LazyConduit 🚀
 
-LazyConduit 是一個用 Python 撰寫的資料轉換與 LLM 互動工具。它能自動解析你輸入的 Prompt，將其中引用的檔案轉換為 LLM 可理解的格式，並直接串接 LLM API 取得回應。
+LazyConduit 是一個用 Python 撰寫的資料轉換、LLM 互動與 **ROS2 機器人整合** 工具。它能自動解析 Prompt 中的檔案引用，轉換為 LLM 可理解格式，並透過標準 GUI 或 ROS2 Topic 進行跨平台通訊。
 
-LazyConduit is a Python-based data conversion and LLM interaction tool. It automatically parses file references in your prompts, converts them into LLM-compatible formats, and directly communicates with LLM APIs to retrieve responses.
+LazyConduit is a Python-based tool for data conversion, LLM interaction, and **ROS2 robotics integration**. It automatically parses file references in prompts, converts them into LLM-compatible formats, and supports communication via standard GUI or ROS2 Topics.
 
 ---
 
 ## ✨ 核心特色 / Key Features
 
 ### 中文 (Traditional Chinese)
-- **自動檔案解析**：直接在 Prompt 中使用 `[描述](./路徑/檔案.ext)` 語法，程式會自動讀取並注入資料。
-- **多模態支援**：支援將圖片 (PNG, JPG) 自動轉為 Base64 傳送給具備視覺能力的 LLM 模型（如 gemma4）。
-- **服務自動管理**：內建腳本可自動管理本地 Ollama 服務的啟動與停止。
-- **純文字自動注入**：自動偵測 `.txt` 檔案並將內容直接展開於 Prompt 之中。
-- **靈活的 CLI 界面**：支援自訂模型、輸出檔案、轉換品質等參數。
+- **🤖 ROS2 深度整合**：提供 `LazyConduitNode`，支援透過 Topic 遠端觸發 LLM 任務，並具備 JSON 序號追蹤與耗時監控。
+- **📝 自動檔案解析**：直接在 Prompt 中使用 `[描述](./路徑/檔案.ext)` 語法，程式會自動讀取並注入資料。
+- **👁️ 多模態支援**：透過 `cv_bridge` 整合，支援 `sensor_msgs/Image` 直接進行視覺分析。
+- **🔌 靈活的雙介面**：具備文件工作流專用的 GUI 與 ROS2 偵錯專用的 Debug Console。
+- **🐳 Docker 一鍵部署**：內建完整 ROS2 環境，支援與宿主機 Ollama 服務無縫串接。
 
 ### English
-- **Auto-File Parsing**: Use `[desc](path)` syntax directly in prompts to automatically load and inject file data.
-- **Multimodal Support**: Automatically converts images (PNG, JPG) to Base64 for multimodal LLMs (e.g., gemma4).
-- **Service Management**: Built-in scripts to manage local Ollama service start/stop.
-- **Text Auto-Injection**: Detects `.txt` files and expands their content directly into the prompt.
-- **Flexible CLI**: Customizable models, output paths, conversion quality, and more.
+- **🤖 ROS2 Deep Integration**: Provides `LazyConduitNode` supporting remote LLM tasks via Topics, featuring JSON sequence tracking and duration monitoring.
+- **📝 Auto-File Parsing**: Use `[desc](path)` syntax directly in prompts to automatically load and inject file data.
+- **👁️ Multimodal Support**: Integrated with `cv_bridge` to support vision analysis directly via `sensor_msgs/Image`.
+- **🔌 Flexible Dual Interface**: Includes a Document Workflow GUI and a dedicated ROS2 Debug Console.
+- **🐳 Docker One-Key Deployment**: Built-in ROS2 environment with seamless connection to host-side Ollama services.
 
 ---
 
-## 🛠️ 安裝與準備 / Installation & Setup
+## 🐳 Docker 快速啟動 / Docker Quick Start
 
-1. **環境需求 / Requirements**:
-   - Python 3.10+
-   - [Ollama](https://ollama.ai/)
+我們提供完整的環境，確保 ROS2 與所有依賴套件開箱即用：
+We provide a full environment to ensure ROS2 and all dependencies work out of the box:
 
-2. **安裝依賴套件 / Install Dependencies**:
-   ```bash
-   pip install requests pymupdf python-docx odfpy
-   ```
-
-3. **模型準備 / Pull Models**:
-   ```bash
-   ollama pull gemma4:latest
-   ollama pull gemma4:e2b
-   ollama pull gemma3:1b
-   ```
+```bash
+# 啟動環境 (自動處理網路與掛載) / Start environment (Auto networking & mounting)
+bash docker_run.sh
+```
 
 ---
 
 ## 🚀 使用說明 / Usage
-## 🚀 使用方式 / Usage
 
-### 1. 啟動服務 / Start Service
+### 🎮 ROS2 偵錯模式 / ROS2 Debug Mode
+執行專用的偵錯控制台進行節點測試：
+Run the dedicated debug console for node testing:
 ```bash
-bash scripts/ollama_manager.sh start
+python3 LazyConduitGUI_ROS2.py
 ```
+- **Launch Node**: 啟動背景節點並監控 `/lazy_conduit/output`。 / Starts the background node and monitors output.
+- **Monitor**: 自動解析 JSON 回傳，顯示耗時與序號。 / Auto-parses JSON response to show duration and index.
 
-### 2. 執行指令 / Run Commands
-
-### 圖形界面模式 (GUI Mode)
-如果你偏好使用視窗界面，可以使用以下指令啟動：
+### 📄 文件工作流模式 / Document Workflow Mode
+執行標準 GUI 進行筆記與文件整理：
+Run the standard GUI for note-taking and document organization:
 ```bash
 python3 LazyConduitGUI.py
 ```
-**功能特色 / Features:**
-- **三欄式佈局**：同時具備 Prompt 輸入、即時預覽 (Markdown 著色)、以及 LLM 回應區域。
-- **自動儲存**：輸入內容會即時存檔至 `temp/input_tmp.md`，輸出結果存至 `temp/output_tmp.md`。
-- **服務管理**：內建 Ollama 服務狀態切換按鈕，無需切換至終端機。
-- **模型管理**：自動列出已安裝模型，並支援手動輸入下載。
 
 ---
 
-### 終端機模式 (CLI Mode)
-**文字總結範例 (Text Summary Example):**
-```bash
-python3 LazyConduit.py "請幫我總結這份筆記： [我的筆記](./assets/notes.txt)"
-```
+## 📡 ROS2 Topic 協定 / Communication Protocol
 
-**圖片分析範例 (Image Analysis Example):**
-```bash
-python3 LazyConduit.py --model "ollama/gemma4" "分析這張圖片 [小雞](./assets/chicken.png)"
-```
+### 📥 訂閱 / Subscriptions
+- `/lazy_conduit/text_input` (`std_msgs/String`)
+- `/lazy_conduit/vision_input` (`sensor_msgs/Image`)
+- `/lazy_conduit/vision_prompt` (`std_msgs/String`)
 
-**PDF 分析範例 (PDF Analysis Example):**
-```bash
-python3 LazyConduit.py --model "ollama/gemma4" --pages "1" "請總結這份文件的第一頁內容： [文件](./assets/3 Body Problem.pdf)"
-```
+### 📤 發布 / Publications
+- `/lazy_conduit/output` (`std_msgs/String`):
+  回傳 JSON 格式結果，方便外部程式串接解析。
+  Returns JSON formatted results for easy integration.
+  ```json
+  {
+    "index": 1,
+    "duration": 3.42,
+    "model": "ollama/gemma3:1b",
+    "content": "..."
+  }
+  ```
 
-**PDF 多頁分析範例 (PDF Multi-Page Analysis Example):**
-```bash
-python3 LazyConduit.py --model "ollama/gemma4" --pages "1,2,3" "請總結這份文件的第一、二、三頁內容： [文件](./assets/3 Body Problem.pdf)"
-```
-
-**docx/odt 轉換範例 (Document Conversion Example):**
-```bash
-# 支援 .docx 與 .odt
-python3 LazyConduit.py --model "ollama/gemma4" "請總結這份文件的內容： [文件](./assets/3 body problem.docx)"
-```
 ---
-
-## 📂 專案結構 / Project Structure
-- `LazyConduit.py`: CLI 主程式 / CLI entry point.
-- `LazyConduitGUI.py`: GUI 主程式 / GUI entry point.
-- `scripts/`: 服務管理腳本 / Service management scripts.
-- `utils/`: 核心模組 (解析器、轉換器、LLM 客戶端) / Core modules.
-- `temp/`: GUI 暫存目錄 / GUI temporary files.
 
 ## 📅 開發進度 / Roadmap
 - [x] Phase 1: Ollama 服務管理自動化 / Ollama service automation.
-- [x] Phase 2: CLI 核心功能、Markdown 解析、文字/圖片注入 / CLI core, Markdown parsing, Text/Image injection.
-- [x] Phase 3: GUI 界面開發 / GUI development.
-- [ ] Phase 4: ROS2 rostopic 支援 / ROS2 rostopic support.
+- [x] Phase 2: CLI 核心、Markdown 解析 / CLI core, Markdown parsing.
+- [x] Phase 3: GUI 介面開發 / GUI development.
+- [x] Phase 4: ROS2 深度整合 / ROS2 integration.
 
 ## 📄 授權條款 / License
 本專案採用 [MIT License](LICENSE) 授權。
 This project is licensed under the [MIT License](LICENSE).
-
----
-*LazyConduit - 讓資料與 LLM 之間的傳遞變得更懶、更直覺。*
