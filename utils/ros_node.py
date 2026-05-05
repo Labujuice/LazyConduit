@@ -153,7 +153,7 @@ class LazyConduitNode(Node):
                 "duration": duration,
                 "model": target_model,
                 "content": response_content
-            })
+            }, ensure_ascii=False)
             
             out_msg = String()
             out_msg.data = res_payload

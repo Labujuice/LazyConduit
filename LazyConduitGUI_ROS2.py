@@ -103,7 +103,7 @@ class LazyConduitGUI_ROS2:
         # 5. Log Area
         log_frame = tk.LabelFrame(self.root, text=" 🚀 System Log / ROS2 Output ", bg="white", font=("Arial", 10, "bold"))
         log_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=15, pady=10)
-        self.output_text = scrolledtext.ScrolledText(log_frame, wrap=tk.WORD, font=("Consolas", 10), bg="#1e1e1e", fg="#d4d4d4", insertbackground="white")
+        self.output_text = scrolledtext.ScrolledText(log_frame, wrap=tk.WORD, font=("Arial", 10), bg="#1e1e1e", fg="#d4d4d4", insertbackground="white")
         self.output_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
     def toggle_ros(self):
@@ -198,7 +198,7 @@ class LazyConduitGUI_ROS2:
                 "timestamp": time.time(),
                 "model": f"ollama/{model}", 
                 "prompt": txt
-            })
+            }, ensure_ascii=False)
             
             msg = String()
             msg.data = payload
@@ -233,7 +233,7 @@ class LazyConduitGUI_ROS2:
                     "timestamp": time.time(),
                     "model": f"ollama/{model}", 
                     "prompt": prompt
-                })
+                }, ensure_ascii=False)
                 
                 p_msg = String()
                 p_msg.data = payload
