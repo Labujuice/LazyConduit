@@ -95,32 +95,35 @@ class LazyConduitNode(Node):
         """Main processing logic (Parser -> Converter -> LLM -> Publish)."""
         import time
         import json
-        start_t = time.time()
         
-        # 1. Parse JSON if applicable, otherwise treat as raw prompt
+        # 1. Parse JSON if applicable
         target_model = self.get_parameter('model').get_parameter_value().string_value
         prompt = raw_data
+        msg_index = "?"
+        start_time_ros = time.time() # Absolute start
+        req_timestamp = start_time_ros # Fallback
         
         try:
             data = json.loads(raw_data)
-            if isinstance(data, dict) and "prompt" in data:
-                prompt = data["prompt"]
-                if "model" in data:
-                    target_model = data["model"]
+            if isinstance(data, dict):
+                prompt = data.get("prompt", raw_data)
+                target_model = data.get("model", target_model)
+                msg_index = data.get("index", "?")
+                req_timestamp = data.get("timestamp", start_time_ros)
         except:
-            pass # Not JSON, use defaults
+            pass # Not JSON
 
-        self.get_logger().info(f"--- [START] Request using model [{target_model}] ---")
+        self.get_logger().info(f"--- [START] Request #{msg_index} using model [{target_model}] ---")
         
         try:
-            # Update client model for this specific request
+            # Sync model
             if self.client.model != target_model:
                 self.client.model = target_model
 
+            # File parsing logic
             file_links = self.parser.parse(prompt)
             final_images = images if images else []
             final_prompt = prompt
-            
             for link in file_links:
                 if link["exists"]:
                     mime, data = self.converter.convert(link["abs_path"])
@@ -131,17 +134,32 @@ class LazyConduitNode(Node):
                         final_prompt = final_prompt.replace(f"[{link['description']}]({link['original_path']})", f"\n{data}\n")
             
             if final_images:
-                # Use LLaVA or similar prompt style if needed, otherwise just append
                 final_prompt = "Analyze these images: " + final_prompt
 
-            response = self.client.ask(final_prompt, media=final_images if final_images else None)
+            # LLM Request
+            response_content = self.client.ask(final_prompt, media=final_images if final_images else None)
+            
+            # 2. Calculate Duration
+            end_time_ros = time.time()
+            # Calculate duration relative to request timestamp (Total RTT) 
+            # or just relative to start_time_ros (Processing time)
+            duration = end_time_ros - req_timestamp
+            
+            # 3. Package Response as JSON
+            res_payload = json.dumps({
+                "index": msg_index,
+                "request_timestamp": req_timestamp,
+                "response_timestamp": end_time_ros,
+                "duration": duration,
+                "model": target_model,
+                "content": response_content
+            })
             
             out_msg = String()
-            out_msg.data = response
+            out_msg.data = res_payload
             self.output_pub.publish(out_msg)
             
-            end_t = time.time()
-            self.get_logger().info(f"--- [DONE] Response Published at {end_t:.3f} (Took {end_t-start_t:.2f}s) ---")
+            self.get_logger().info(f"--- [DONE] Request #{msg_index} (RTT: {duration:.2f}s) ---")
             
         except Exception as e:
-            self.get_logger().error(f"Processing failed: {str(e)}")
+            self.get_logger().error(f"Processing failed for #{msg_index}: {str(e)}")

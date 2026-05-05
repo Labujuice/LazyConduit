@@ -113,6 +113,7 @@ class LazyConduitGUI_ROS2:
     def start_ros(self):
         if not ROS2_AVAILABLE: return
         selected_model = self.model_combo.get() or "gemma3:1b"
+        self.request_counter = 0 # Reset counter on start
         
         self.ros_btn.config(state=tk.DISABLED)
         self.root.after(1000, lambda: self.ros_btn.config(state=tk.NORMAL))
@@ -166,7 +167,20 @@ class LazyConduitGUI_ROS2:
             self.output_text.insert(tk.END, "[SYSTEM] ROS2 Node stopped.\n")
 
     def ros_output_callback(self, msg):
-        self.root.after(0, lambda: self.output_text.insert(tk.END, f"\n[LLM RESPONSE] >> {msg.data}\n"))
+        """Handle structured JSON response from ROS2."""
+        t_str = time.strftime('%H:%M:%S')
+        try:
+            import json
+            data = json.loads(msg.data)
+            idx = data.get("index", "?")
+            dur = data.get("duration", 0.0)
+            content = data.get("content", msg.data)
+            
+            display_txt = f"\n[{t_str}] [# {idx}] ⏱️ {dur:.2f}s >> {content}\n"
+        except:
+            display_txt = f"\n[{t_str}] [RAW] >> {msg.data}\n"
+
+        self.root.after(0, lambda: self.output_text.insert(tk.END, display_txt))
         self.root.after(0, lambda: self.output_text.see(tk.END))
 
     def pub_test_text(self):
@@ -177,13 +191,19 @@ class LazyConduitGUI_ROS2:
             self.pub_text_btn.config(state=tk.DISABLED)
             self.root.after(500, lambda: self.pub_text_btn.config(state=tk.NORMAL))
             
-            import json
-            payload = json.dumps({"model": f"ollama/{model}", "prompt": txt})
+            self.request_counter += 1
+            import json, time
+            payload = json.dumps({
+                "index": self.request_counter,
+                "timestamp": time.time(),
+                "model": f"ollama/{model}", 
+                "prompt": txt
+            })
             
             msg = String()
             msg.data = payload
             self.test_text_pub.publish(msg)
-            self.output_text.insert(tk.END, f"📤 [GUI->TEXT_TOPIC] (Model: {model}): {txt}\n")
+            self.output_text.insert(tk.END, f"📤 [#{self.request_counter}] -> /text_input ({model})\n")
 
     def browse_test_img(self):
         path = filedialog.askopenfilename(filetypes=[("Image files", "*.jpg *.png *.jpeg")])
@@ -205,13 +225,19 @@ class LazyConduitGUI_ROS2:
                 img_msg = self.bridge.cv2_to_imgmsg(cv_img, encoding="bgr8")
                 self.test_img_pub.publish(img_msg)
                 
-                import json
-                payload = json.dumps({"model": f"ollama/{model}", "prompt": prompt})
+                self.request_counter += 1
+                import json, time
+                payload = json.dumps({
+                    "index": self.request_counter,
+                    "timestamp": time.time(),
+                    "model": f"ollama/{model}", 
+                    "prompt": prompt
+                })
                 
                 p_msg = String()
                 p_msg.data = payload
                 self.test_prompt_pub.publish(p_msg)
-                self.output_text.insert(tk.END, f"📤 [GUI->VISION_TOPIC] (Model: {model}): {prompt}\n")
+                self.output_text.insert(tk.END, f"📤 [#{self.request_counter}] -> /vision_topic ({model})\n")
 
     def scan_nodes(self):
         if not ROS2_AVAILABLE: return
