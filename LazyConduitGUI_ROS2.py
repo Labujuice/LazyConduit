@@ -112,36 +112,53 @@ class LazyConduitGUI_ROS2:
 
     def start_ros(self):
         if not ROS2_AVAILABLE: return
+        selected_model = self.model_combo.get() or "gemma3:1b"
+        
+        self.ros_btn.config(state=tk.DISABLED)
+        self.root.after(1000, lambda: self.ros_btn.config(state=tk.NORMAL))
+
         try:
             if not rclpy.ok(): rclpy.init()
+            
+            # Pass model as a parameter to the node
             self.ros_node = LazyConduitNode()
+            # Set the parameter dynamically before spinning
+            param = rclpy.parameter.Parameter('model', rclpy.Parameter.Type.STRING, f"ollama/{selected_model}")
+            self.ros_node.set_parameters([param])
+            
+            self.ros_executor = rclpy.executors.SingleThreadedExecutor()
+            self.ros_executor.add_node(self.ros_node)
             
             # Sub to output
             self.ros_node.create_subscription(String, '/lazy_conduit/output', self.ros_output_callback, 10)
             
-            # Publishers for simulation
+            # Simulation Pubs
             self.test_text_pub = self.ros_node.create_publisher(String, '/lazy_conduit/text_input', 10)
             self.test_img_pub = self.ros_node.create_publisher(Image, '/lazy_conduit/vision_input', 10)
             self.test_prompt_pub = self.ros_node.create_publisher(String, '/lazy_conduit/vision_prompt', 10)
 
-            self.ros_executor = rclpy.executors.SingleThreadedExecutor()
-            self.ros_executor.add_node(self.ros_node)
             self.ros_thread = threading.Thread(target=self.ros_executor.spin, daemon=True)
             self.ros_thread.start()
             
-            self.ros_status_label.config(text="● ROS2: RUNNING", fg="#28a745")
+            self.ros_status_label.config(text=f"● ROS2: {selected_model}", fg="#28a745")
             self.ros_btn.config(text="Stop ROS2 Node", bg="#dc3545", fg="white")
             self.pub_text_btn.config(state=tk.NORMAL)
             self.pub_vision_btn.config(state=tk.NORMAL)
-            self.output_text.insert(tk.END, "[SYSTEM] ROS2 Node 'lazy_conduit_node' started.\n")
+            self.output_text.insert(tk.END, f"[SYSTEM] Node started with model: {selected_model}\n")
         except Exception as e:
             messagebox.showerror("ROS2 Error", str(e))
 
     def stop_ros(self):
         if self.ros_node:
-            if self.ros_executor: self.ros_executor.shutdown()
-            self.ros_node.destroy_node()
+            try:
+                if self.ros_executor:
+                    self.ros_executor.shutdown()
+                self.ros_node.destroy_node()
+                # Give some time for thread to finish
+                time.sleep(0.2)
+            except: pass
             self.ros_node = None
+            self.ros_executor = None
             self.ros_status_label.config(text="○ ROS2: STOPPED", fg="#6c757d")
             self.ros_btn.config(text="Launch ROS2 Node", bg="#f8f9fa", fg="black")
             self.pub_text_btn.config(state=tk.DISABLED)
@@ -154,11 +171,19 @@ class LazyConduitGUI_ROS2:
 
     def pub_test_text(self):
         txt = self.test_text_entry.get().strip()
+        model = self.model_combo.get() or "gemma3:1b"
         if txt and self.test_text_pub:
+            # Debounce
+            self.pub_text_btn.config(state=tk.DISABLED)
+            self.root.after(500, lambda: self.pub_text_btn.config(state=tk.NORMAL))
+            
+            import json
+            payload = json.dumps({"model": f"ollama/{model}", "prompt": txt})
+            
             msg = String()
-            msg.data = txt
+            msg.data = payload
             self.test_text_pub.publish(msg)
-            self.output_text.insert(tk.END, f"[PUB] -> /text_input: {txt}\n")
+            self.output_text.insert(tk.END, f"📤 [GUI->TEXT_TOPIC] (Model: {model}): {txt}\n")
 
     def browse_test_img(self):
         path = filedialog.askopenfilename(filetypes=[("Image files", "*.jpg *.png *.jpeg")])
@@ -169,16 +194,24 @@ class LazyConduitGUI_ROS2:
     def pub_test_vision(self):
         path = self.test_img_path.get().strip()
         prompt = self.test_text_entry.get().strip() or "Describe this image."
+        model = self.model_combo.get() or "gemma3:1b"
         if path and os.path.exists(path) and self.test_img_pub:
+            # Debounce
+            self.pub_vision_btn.config(state=tk.DISABLED)
+            self.root.after(500, lambda: self.pub_vision_btn.config(state=tk.NORMAL))
+            
             cv_img = cv2.imread(path)
             if cv_img is not None:
                 img_msg = self.bridge.cv2_to_imgmsg(cv_img, encoding="bgr8")
                 self.test_img_pub.publish(img_msg)
                 
+                import json
+                payload = json.dumps({"model": f"ollama/{model}", "prompt": prompt})
+                
                 p_msg = String()
-                p_msg.data = prompt
+                p_msg.data = payload
                 self.test_prompt_pub.publish(p_msg)
-                self.output_text.insert(tk.END, f"[PUB] -> /vision_input (Image) & /vision_prompt: {prompt}\n")
+                self.output_text.insert(tk.END, f"📤 [GUI->VISION_TOPIC] (Model: {model}): {prompt}\n")
 
     def scan_nodes(self):
         if not ROS2_AVAILABLE: return
