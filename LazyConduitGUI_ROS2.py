@@ -203,7 +203,8 @@ class LazyConduitGUI_ROS2:
             msg = String()
             msg.data = payload
             self.test_text_pub.publish(msg)
-            self.output_text.insert(tk.END, f"📤 [#{self.request_counter}] -> /text_input ({model})\n")
+            t_send = time.strftime('%H:%M:%S')
+            self.output_text.insert(tk.END, f"📤 [{t_send}] [#{self.request_counter}] -> {txt} ({model})\n")
 
     def browse_test_img(self):
         path = filedialog.askopenfilename(filetypes=[("Image files", "*.jpg *.png *.jpeg")])
@@ -237,7 +238,8 @@ class LazyConduitGUI_ROS2:
                 p_msg = String()
                 p_msg.data = payload
                 self.test_prompt_pub.publish(p_msg)
-                self.output_text.insert(tk.END, f"📤 [#{self.request_counter}] -> /vision_topic ({model})\n")
+                t_send = time.strftime('%H:%M:%S')
+                self.output_text.insert(tk.END, f"📤 [{t_send}] [#{self.request_counter}] -> (Vision) {prompt} ({model})\n")
 
     def scan_nodes(self):
         if not ROS2_AVAILABLE: return
